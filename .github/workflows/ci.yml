@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t context-debate:test .
+      - name: Verify container startup, sign-in, and preview
+        env:
+          APP_PASSWORD: ci-local-test-password
+        run: |
+          docker run --detach --name context-debate --publish 127.0.0.1:3000:3000 \
+            -e APP_PASSWORD context-debate:test
+          curl --fail --silent --show-error --retry 20 --retry-connrefused http://127.0.0.1:3000/health
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/)" = 401
+          curl --fail --silent --show-error --user "owner:$APP_PASSWORD" http://127.0.0.1:3000/api/status
+      - name: Report container logs
+        if: failure()
+        run: docker logs context-debate
