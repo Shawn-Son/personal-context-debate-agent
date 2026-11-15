@@ -1,4 +1,5 @@
 import { api, sessionPath } from './api.js';
+import { createMicrophoneMeter } from './meter.js';
 
 function timeout(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,7 +21,7 @@ async function waitForIce(peer) {
   }
 }
 
-export function createVoice({ sessionId, audio, onTranscript, onState, onError }) {
+export function createVoice({ sessionId, audio, onTranscript, onState, onError, onLevel }) {
   const streamId = crypto.randomUUID();
   const peer = new RTCPeerConnection();
   const channel = peer.createDataChannel('oai-events');
@@ -28,6 +29,7 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
   const pending = [];
   const seen = new Set();
   let media;
+  let meter;
   let saving;
   let timer;
   let cleaned = false;
@@ -140,6 +142,7 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
     connectionController.abort();
     clearTimeout(timer);
     timer = null;
+    meter?.close();
     media?.getTracks().forEach((track) => track.stop());
     channel.close();
     peer.close();
@@ -149,11 +152,13 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
   async function connect() {
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Microphone access requires HTTPS or localhost.');
+      meter = createMicrophoneMeter(onLevel);
       media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       if (cleaned) {
         media.getTracks().forEach((track) => track.stop());
         throw new DOMException('Voice connection was canceled.', 'AbortError');
       }
+      meter?.attach(media);
       for (const track of media.getAudioTracks()) peer.addTrack(track, media);
       await peer.setLocalDescription(await peer.createOffer());
       await waitForIce(peer);
@@ -169,6 +174,7 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
         content: greeting ?? 'Begin the conversation now. Ask one short question in English, then listen.',
       });
       onState('connected');
+      meter?.setActive(true);
     } catch (error) {
       const canceled = cleaned;
       cleanup();
@@ -184,7 +190,7 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
       closing = (async () => {
         try {
           if (requestClose && didStart && !cleaned) {
-            for (const track of media?.getAudioTracks() ?? []) track.enabled = false;
+            setMuted(true);
             if (send('session.close')) await Promise.race([closed, timeout(2100)]);
           }
         } finally {
@@ -199,6 +205,7 @@ export function createVoice({ sessionId, audio, onTranscript, onState, onError }
 
   function setMuted(muted) {
     for (const track of media?.getAudioTracks() ?? []) track.enabled = !muted;
+    meter?.setActive(!muted);
   }
 
   return { connect, stop, setMuted };

@@ -84,6 +84,7 @@ function sessionOutput(row) {
     style: row.style,
     language: row.language,
     status: row.status,
+    contextEligible: Boolean(row.context_eligible),
     startedAt: row.started_at,
     endedAt: row.ended_at,
     summary: row.summary,

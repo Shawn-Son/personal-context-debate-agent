@@ -70,42 +70,58 @@ const suggestions = [
   { title: 'Is curiosity something you can teach?', category: 'Learning', style: 'debate', icon: 'chat' },
 ];
 
-const waveLevels = [12, 22, 36, 26, 45, 65, 38, 62, 94, 58, 78, 118, 149, 96, 64, 99, 127, 86, 57, 74, 46, 30, 44, 23, 16];
-
 function artwork() {
-  return `<div class="hero-art" aria-hidden="true"><span class="orbit orbit-outer"></span><span class="orbit orbit-middle"></span><span class="orbit orbit-inner"></span><span class="orbit-dot dot-one"></span><span class="orbit-dot dot-two"></span><div class="wave">${waveLevels.map((_, index) => `<i class="wave-${index + 1}"></i>`).join('')}</div></div>`;
+  return `<div class="hero-art" aria-hidden="true"><div class="wave">${Array.from({ length: 25 }, (_, index) => `<i class="wave-${index + 1}"></i>`).join('')}</div></div>`;
 }
 
 export function practiceView({ needsBootstrap, active, memories, sessions }) {
-  const recent = sessions.find((session) => session.status !== 'active' && session.summary);
-  const practiceCount = sessions.filter((session) => session.status !== 'active' && session.mode === 'conversation').length;
-  const memoryCount = memories.filter((entry) => entry.status === 'active').length;
+  const recent = sessions.find((session) => session.status !== 'active' && session.contextEligible && session.mode === 'conversation' && session.summary);
+  const activeMemories = memories.filter((entry) => entry.status === 'active');
+  const openQuestion = recent?.review?.openQuestion?.trim();
+  const deskLabel = active ? 'Session in progress' : needsBootstrap ? 'Setup interview' : openQuestion ? 'Continue a topic' : 'Speaking session';
+  const deskTitle = active ? topicTitle(active) : needsBootstrap ? 'Set up your practice.' : openQuestion || 'Your next conversation';
+  const deskDescription = active
+    ? 'Your place in this conversation is saved.'
+    : needsBootstrap
+      ? 'Tell your partner what you want to practice, which ideas interest you, and when to give feedback.'
+      : openQuestion
+        ? `From your last session · ${topicTitle(recent)}`
+        : 'Bring a question to explore or test your argument against a different point of view.';
+  const continueTopic = openQuestion
+    ? `new/${new URLSearchParams({ topic: openQuestion.slice(0, 180), style: recent.style ?? 'explore' })}`
+    : '';
+
   return `<div class="screen practice-screen">
-    <div class="hero">
+    <header class="practice-heading">
+      <div><h1>Practice</h1><p>Explore ideas and build confidence speaking English.</p></div>
+      ${active || needsBootstrap ? `<button class="button outline practice-new" data-action="new">${icon('plus', 17)} New session</button>` : ''}
+    </header>
+    <section class="hero session-desk" aria-labelledby="desk-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span></span> YOUR ENGLISH SPEAKING STUDIO</p>
-        <h1>Think out loud.<br><em>In English.</em></h1>
-        <p class="hero-description">Go deeper on ideas you care about with a conversation partner that remembers where you left off.</p>
+        <p class="desk-meta">${icon(active ? 'history' : 'practice', 16)} ${deskLabel}</p>
+        <h2 class="desk-title" id="desk-title">${esc(deskTitle)}</h2>
+        <p class="hero-description">${esc(deskDescription)}</p>
         <div class="hero-actions">
           ${active ? `<button class="button primary" data-action="resume" data-id="${esc(active.id)}">${icon('mic', 18)} Resume session</button>`
-          : needsBootstrap ? `<button class="button primary" data-action="bootstrap">${icon('mic', 18)} Start setup interview</button><button class="button text-button" data-action="new">Skip to practice ${icon('arrow', 17)}</button>`
+          : needsBootstrap ? `<button class="button primary" data-action="bootstrap">${icon('mic', 18)} Start setup interview</button>`
+          : continueTopic ? `<a class="button primary" href="#${esc(continueTopic)}">${icon('mic', 18)} Continue discussion</a><a class="button text-button" href="#review/${esc(recent.id)}">Read review ${icon('arrow', 17)}</a>`
           : `<button class="button primary" data-action="new">${icon('mic', 18)} Start a conversation</button>`}
         </div>
       </div>${artwork()}
-    </div>
+    </section>
     <div class="practice-grid">
-      <section aria-labelledby="topics-heading">
-        <div class="section-heading"><div><h2 id="topics-heading">Find a starting point</h2><p>Pick a prompt, or bring an idea of your own.</p></div><button class="button icon-button" data-action="new" aria-label="Choose your own topic">${icon('plus')}</button></div>
+      <section class="prompts-section" aria-labelledby="topics-heading">
+        <div class="section-heading"><h2 id="topics-heading">Discussion prompts</h2><button class="button text-button topic-create" data-action="new">${icon('plus', 16)} Custom topic</button></div>
         <div class="topic-list">
-          ${suggestions.map((suggestion, index) => `<button class="topic-card" data-action="suggestion" data-index="${index}"><span class="topic-icon topic-icon-${index}">${icon(suggestion.icon, 21)}</span><span><small>${suggestion.category} <b>·</b> ${label(suggestion.style)}</small><strong>${esc(suggestion.title)}</strong></span><span class="topic-arrow">${icon('diagonal', 18)}</span></button>`).join('')}
+          ${suggestions.map((suggestion, index) => `<button class="topic-card" data-action="suggestion" data-index="${index}"><span class="topic-icon topic-icon-${index}">${icon(suggestion.icon, 18)}</span><span><strong>${esc(suggestion.title)}</strong><small>${suggestion.category} <b>·</b> ${label(suggestion.style)}</small></span><span class="topic-arrow">${icon('diagonal', 17)}</span></button>`).join('')}
         </div>
       </section>
       <section class="context-card" aria-labelledby="context-heading">
-        <div class="context-top"><span class="context-icon">${icon('layers', 21)}</span><a class="icon-link" href="#memory" aria-label="View memory">${icon('diagonal', 18)}</a></div>
-        <h2 id="context-heading">Your context</h2>
-        <p>${memoryCount ? 'Your partner uses these memories to make the next conversation more personal.' : 'Share your interests and how you like feedback during setup. Your partner builds from there.'}</p>
-        <div class="context-stats"><span><strong>${memoryCount}</strong><small>Memories</small></span><span><strong>${practiceCount}</strong><small>Practice sessions</small></span></div>
-        ${recent ? `<a class="under-link" href="#review/${esc(recent.id)}">Review your last session ${icon('arrow', 17)}</a>` : `<a class="under-link" href="#memory">View your memory ${icon('arrow', 17)}</a>`}
+        <div class="context-top"><h2 id="context-heading">Your context</h2><a class="icon-link" href="#memory" aria-label="Open memory">${icon('diagonal', 17)}</a></div>
+        ${activeMemories.length
+          ? `<ul class="context-list">${activeMemories.slice(0, 3).map((entry) => `<li class="context-row"><small>${esc(kindNames[entry.kind] ?? label(entry.kind))}</small><span>${esc(memoryValue(entry.value))}</span></li>`).join('')}</ul>`
+          : '<p class="context-empty">Goals, interests and feedback preferences will appear here as you practice.</p>'}
+        <a class="under-link" href="#memory">Manage memory ${icon('arrow', 16)}</a>
       </section>
     </div>
   </div>`;
@@ -119,17 +135,17 @@ export function newView({ mode, topic = '', style = 'explore' }) {
   const bootstrap = mode === 'bootstrap';
   return `<div class="screen narrow-screen">
     <a class="back-link" href="#practice">${icon('back', 17)} Practice</a>
-    <div class="static-heading"><p class="eyebrow"><span></span> ${bootstrap ? 'FIRST SESSION' : 'NEW SESSION'}</p>
-      <h1>${bootstrap ? 'Let’s get to know you.' : 'What’s on your mind?'}</h1>
-      <p>${bootstrap ? 'Talk through your interests, your English goals, and the way you like to receive feedback. You can skip any question.' : 'Bring a question or an idea. Your partner will use relevant things you’ve shared to take the conversation further.'}</p>
+    <div class="static-heading">
+      <h1>${bootstrap ? 'Setup interview' : 'New session'}</h1>
+      <p>${bootstrap ? 'Answer a few questions to personalize your practice. You can skip any question.' : 'Pick a topic and decide how you want to discuss it.'}</p>
     </div>
     <form id="session-form" class="panel form-panel">
       <input type="hidden" name="mode" value="${mode}">
       ${bootstrap ? `<div class="setup-outline"><p>${icon('circle', 19)} Your interests and what you like to talk about</p><p>${icon('spark', 19)} What you want to do better in English</p><p>${icon('chat', 19)} How and when you want feedback</p></div>`
       : `<label class="field">Topic <span class="muted-label">Optional</span><input name="topic" maxlength="180" value="${esc(topic)}" placeholder="e.g. Is remote work better for deep work?"></label>
       <fieldset><legend>Conversation style</legend><div class="radio-grid"><label class="option"><input type="radio" name="style" value="explore" ${style !== 'debate' ? 'checked' : ''}><span><strong>Explore</strong><small>Develop an idea through questions.</small></span></label><label class="option"><input type="radio" name="style" value="debate" ${style === 'debate' ? 'checked' : ''}><span><strong>Debate</strong><small>Test your position against a counterargument.</small></span></label></div></fieldset>`}
-      <label class="field">Session language<select name="language"><option value="en">English</option>${bootstrap ? '<option value="ko">한국어 · Korean</option>' : ''}</select></label>
-      <p class="small-note">Session transcripts are saved for review and memory. Voice uses your connected OpenAI account.</p>
+      ${bootstrap ? '<label class="field">Interview language<select name="language"><option value="en">English</option><option value="ko">한국어 · Korean</option></select></label>' : ''}
+      <p class="small-note">Your transcript is saved in History. You can manage what carries forward in <a class="under-link" href="#memory">Memory</a>.</p>
       <button class="button primary dark" type="submit">${bootstrap ? 'Begin setup' : 'Open session'} ${icon('arrow', 18)}</button>
     </form>
   </div>`;
@@ -141,23 +157,24 @@ export function sessionView({ session, utterances, voiceState, voiceAvailable, b
   const bootstrap = session.mode === 'bootstrap';
   return `<div class="screen session-screen">
     <a class="back-link" href="#practice">${icon('back', 17)} Practice</a>
-    <div class="session-heading"><div><p class="eyebrow"><span></span> ${bootstrap ? 'SETUP INTERVIEW' : (session.style === 'debate' ? 'DEBATE SESSION' : 'CONVERSATION')}</p><h1>${esc(topicTitle(session))}</h1></div>
+    <div class="session-heading"><div><p class="session-meta">${icon('practice', 16)} ${bootstrap ? 'Setup interview' : (session.style === 'debate' ? 'Debate' : 'Explore')}<span aria-hidden="true">·</span>${session.language === 'ko' ? 'Korean' : 'English'}</p><h1>${esc(topicTitle(session))}</h1></div>
       <div class="end-actions">${reviewFailed ? '<button class="button outline" data-action="end-without-review">Save transcript only</button>' : ''}
       <button class="button outline" data-action="end" ${busy || connecting ? 'disabled' : ''}>${busy ? 'Working…' : 'End & review'} ${icon('arrow', 17)}</button></div>
     </div>
     <div class="session-grid">
       <section class="voice-panel ${live ? 'is-live' : ''}" aria-label="Voice controls">
-        <p class="voice-status"><i></i>${live ? (muted ? 'Mic muted' : 'Voice connected') : connecting ? 'Connecting…' : voiceAvailable ? 'Voice ready' : 'Text practice'}</p>
+        <div class="voice-panel-header"><h2>Microphone</h2><p class="voice-status" role="status"><i></i>${live ? (muted ? 'Muted' : 'Connected') : connecting ? 'Connecting…' : voiceAvailable ? 'Disconnected' : 'Text preview'}</p></div>
         <div class="voice-orb" aria-hidden="true"><div class="orb-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-        <p>${live ? 'Speak naturally. Leave yourself time to think.' : voiceAvailable ? 'Use your microphone to talk in real time.' : 'Preview with typed replies and sample prompts.'}</p>
+        ${live ? '<div class="mic-meter"><label for="mic-level">Input level</label><meter id="mic-level" min="0" max="1" value="0"></meter></div>' : ''}
         <div class="voice-actions">
           ${live ? `<button class="button primary" data-action="mute">${icon(muted ? 'micOff' : 'mic', 18)} ${muted ? 'Unmute' : 'Mute mic'}</button><button class="button outline-on-dark" data-action="disconnect" ${busy ? 'disabled' : ''}>Disconnect</button>`
           : connecting ? '<button class="button outline-on-dark" data-action="disconnect">Cancel connection</button>'
           : `<button class="button primary" data-action="connect" ${!voiceAvailable || busy ? 'disabled' : ''}>${icon('mic', 18)} Connect microphone</button>`}
         </div>
+        ${voiceAvailable ? '' : '<p class="voice-help">Use the transcript to practice by typing. Configure voice in <a href="#settings">Settings</a>.</p>'}
       </section>
       <section class="panel transcript-panel" aria-labelledby="transcript-heading">
-        <div class="transcript-header"><h2 id="transcript-heading">Conversation</h2><span>${live ? 'Live transcript' : 'Transcript'}</span></div>
+        <div class="transcript-header"><h2 id="transcript-heading">Transcript</h2>${live ? '<span class="live-label">Live</span>' : ''}</div>
         <div class="transcript" id="transcript" role="log" aria-label="Conversation messages">${transcriptView(utterances, prompt)}</div>
         <form id="turn-form" class="composer">
           <label class="visually-hidden" for="reply">Your reply</label>
@@ -177,14 +194,14 @@ export function transcriptView(utterances, prompt) {
 
 export function memoryView(memories) {
   return `<div class="screen content-screen">
-    <div class="static-heading"><p class="eyebrow"><span></span> PERSONAL CONTEXT</p><h1>Your memory</h1><p>See what your conversation partner has learned, correct a detail, or remove it.</p></div>
+    <div class="static-heading"><h1>Your memory</h1><p>Review and edit the context your partner uses in future sessions.</p></div>
     ${memories.length ? `<div class="memory-list">${memories.map((entry) => `<article class="panel memory-item">
       <div class="memory-text"><div class="memory-tags"><span class="pill">${esc(kindNames[entry.kind] ?? label(entry.kind))}</span>${entry.status && entry.status !== 'active' ? `<span class="pill pending">${esc(label(entry.status))}</span>` : ''}</div>
       <h2>${esc(memoryValue(entry.value))}</h2><p>${entry.scope && !['general', 'global', 'general_conversation'].includes(entry.scope) ? `${esc(label(entry.scope))} · ` : ''}${esc(label(String(entry.key ?? '').split('.').at(-1)))}</p>
       ${evidenceView(entry.evidence)}</div>
       <div class="memory-actions"><button class="button icon-button" aria-label="Edit memory" data-action="edit-memory" data-id="${esc(entry.id)}">${icon('edit', 18)}</button><button class="button icon-button danger" aria-label="Delete memory" data-action="delete-memory" data-id="${esc(entry.id)}">${icon('trash', 18)}</button></div>
     </article>`).join('')}</div>` : emptyState('layers', 'Nothing remembered yet', 'Complete the setup interview or a conversation to start building your personal context.', '<button class="button primary dark" data-action="bootstrap">Start setup interview</button>')}
-    <dialog id="memory-dialog"></dialog>
+    <dialog id="memory-dialog" aria-labelledby="memory-dialog-title"></dialog>
   </div>`;
 }
 
@@ -198,7 +215,7 @@ function evidenceView(evidence) {
 export function memoryDialog(entry, remove = false) {
   return `<form id="memory-form" class="form-panel">
     <input type="hidden" name="id" value="${esc(entry.id)}"><input type="hidden" name="op" value="${remove ? 'delete' : 'edit'}">
-    <h2>${remove ? 'Remove this memory?' : 'Edit memory'}</h2>
+    <h2 id="memory-dialog-title">${remove ? 'Remove this memory?' : 'Edit memory'}</h2>
     ${remove ? `<p>This detail will be removed from the context used in future conversations.</p><blockquote>${esc(memoryValue(entry.value))}</blockquote>` : `<label class="field">What should your partner remember?<textarea name="value" rows="4" required maxlength="1200">${esc(typeof entry.value === 'string' ? entry.value : memoryValue(entry.value))}</textarea></label>`}
     <div class="form-actions"><button class="button outline" type="button" data-action="cancel-dialog">Cancel</button><button class="button ${remove ? 'destructive' : 'primary dark'}" type="submit">${remove ? 'Remove memory' : 'Save memory'}</button></div>
   </form>`;
@@ -210,7 +227,7 @@ function emptyState(symbol, title, description, action = '') {
 
 export function historyView(sessions) {
   return `<div class="screen content-screen">
-    <div class="static-heading"><p class="eyebrow"><span></span> PRACTICE JOURNAL</p><h1>Session history</h1><p>Revisit a discussion, review expressions, or pick up an unfinished session.</p></div>
+    <div class="static-heading"><h1>Session history</h1><p>Resume a session or revisit its transcript and feedback.</p></div>
     ${sessions.length ? `<div class="history-list">${sessions.map((session) => `<a class="panel history-item" href="#${session.status === 'active' ? 'session' : 'review'}/${esc(session.id)}"><span class="topic-icon">${icon(session.mode === 'bootstrap' ? 'layers' : 'chat', 21)}</span><span><small>${esc(dateLabel(session.startedAt))} · ${session.mode === 'bootstrap' ? 'Setup interview' : 'Practice session'}</small><strong>${esc(topicTitle(session))}</strong>${session.summary ? `<p>${esc(session.summary)}</p>` : ''}</span><span class="history-end">${session.status === 'active' ? '<span class="pill">In progress</span>' : ''}${icon('arrow', 19)}</span></a>`).join('')}</div>` : emptyState('history', 'Your sessions will show up here', 'After you start, you can return to the transcript and feedback at any time.', '<a class="button primary dark" href="#practice">Go to practice</a>')}
   </div>`;
 }
@@ -222,7 +239,7 @@ export function reviewView(session, utterances) {
   const unreviewed = !session.review;
   return `<div class="screen content-screen">
     <a class="back-link" href="#history">${icon('back', 17)} History</a>
-    <div class="static-heading"><p class="eyebrow"><span></span> SESSION REVIEW</p><h1>${esc(topicTitle(session))}</h1><p>${esc(dateLabel(session.endedAt ?? session.startedAt))}</p></div>
+    <div class="static-heading"><h1>${esc(topicTitle(session))}</h1><p>Session review · ${esc(dateLabel(session.endedAt ?? session.startedAt))}</p></div>
     ${unreviewed ? `<div class="panel prose-card"><h2>Review unavailable</h2><p>Your transcript is available below.</p></div>`
       : `<div class="panel prose-card"><h2>What we discussed</h2><p>${esc(review.summary ?? session.summary ?? 'No summary was recorded.')}</p>${review.openQuestion ? `<p class="review-question"><strong>Pick up here</strong> ${esc(review.openQuestion)}</p>` : ''}</div>
       <div class="review-grid"><section class="panel prose-card"><h2>English feedback</h2>${feedback.length ? feedback.map((item) => `<article class="review-note"><p class="original">${esc(item.original)}</p><p><strong>${esc(item.suggestion)}</strong></p><p>${esc(item.why)}</p></article>`).join('') : '<p>No expression feedback was saved for this session.</p>'}</section>
@@ -233,11 +250,11 @@ export function reviewView(session, utterances) {
 
 export function settingsView(status) {
   return `<div class="screen content-screen">
-    <div class="static-heading"><p class="eyebrow"><span></span> STUDIO PREFERENCES</p><h1>Settings</h1><p>Check your connection and manage how the studio uses your context.</p></div>
+    <div class="static-heading"><h1>Settings</h1><p>Connections and conversation preferences.</p></div>
     <section class="panel prose-card settings-card">
       <h2>AI connection</h2>
-      <div class="setting-row"><span><strong>Live voice</strong><small>Talk through your browser microphone.</small></span><span class="pill ${status.voiceAvailable ? 'ready' : 'pending'}">${status.voiceAvailable ? 'Ready' : 'Not configured'}</span></div>
-      <div class="setting-row"><span><strong>Session review</strong><small>Summaries, memory updates, and English feedback.</small></span><span class="pill ${status.reviewAvailable ? 'ready' : 'pending'}">${status.reviewAvailable ? 'Ready' : 'Not configured'}</span></div>
+      <div class="setting-row"><span><strong>Live voice</strong><small>Talk through your browser microphone.</small></span><span class="pill ${status.voiceAvailable ? 'ready' : 'pending'}">${status.voiceAvailable ? 'Configured' : 'Not configured'}</span></div>
+      <div class="setting-row"><span><strong>Session review</strong><small>Summaries, memory updates, and English feedback.</small></span><span class="pill ${status.reviewAvailable ? 'ready' : 'pending'}">${status.reviewAvailable ? 'Configured' : 'Not configured'}</span></div>
       ${!status.voiceAvailable || !status.reviewAvailable ? '<p class="small-note">To enable AI features, set your OpenAI API key on the server and restart the app. The key stays on the server.</p>' : ''}
     </section>
     <section class="panel prose-card settings-card"><h2>Personal context</h2><p>Share only the details you want your partner to use. You can edit or remove saved items in Memory.</p><div class="form-actions"><button class="button outline" data-action="bootstrap">${icon('mic', 17)} Run setup interview</button><a href="#memory" class="under-link">View memory ${icon('arrow', 17)}</a></div></section>

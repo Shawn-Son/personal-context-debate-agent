@@ -99,7 +99,7 @@ function render() {
     else link.removeAttribute('aria-current');
   }
   connection.classList.toggle('ready', !!state.status?.voiceAvailable);
-  connection.querySelector('span').textContent = state.status?.voiceAvailable ? 'Voice ready' : state.status ? 'Text preview' : 'Connection unavailable';
+  connection.querySelector('span').textContent = state.status?.voiceAvailable ? 'Voice configured' : state.status ? 'Text preview' : 'Connection unavailable';
   main.setAttribute('aria-busy', 'false');
   if (state.dashboardError && !state.status) {
     main.innerHTML = `<div class="screen narrow-screen"><div class="error-banner">${escapeHtml(state.dashboardError)}</div><button class="button primary dark" data-action="reload">Retry connection</button></div>`;
@@ -269,6 +269,12 @@ async function connectVoice() {
         if (state.voice !== voice) return;
         state.liveEvents.push(event);
         updateTranscript();
+      },
+      onLevel(level) {
+        if (state.voice !== voice || state.route.id !== id || state.muted) return;
+        const meter = document.querySelector('#mic-level');
+        if (meter) meter.value = level;
+        main.querySelector('.voice-orb')?.style.setProperty('--mic-level', level);
       },
       onState(status) {
         if (state.voice !== voice) return;
