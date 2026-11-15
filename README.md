@@ -1,11 +1,48 @@
-# Personal Context Debate Agent
+# Context Debate
 
-Context Debate is an English conversation partner that remembers your interests, positions, and learning preferences. It is designed for one person's workspace and keeps memory in a SQLite database you control.
+**An English voice partner that picks up where you left off.** Talk through an idea in Explore mode or defend a position in Debate mode. Your partner can carry forward your interests, views, and feedback preferences from earlier sessions.
 
-- **Bootstrap** through a voice interview about English goals, interests, and feedback preferences.
-- **Converse** in Explore or Debate mode. Begin on a new topic or pick up an earlier thread.
-- **Reflect** with a session summary, an open question, and a small set of English language suggestions.
-- **Manage memory** by reviewing the evidence behind each item, editing stale information, or forgetting it.
+![Context Debate workspace with a sample debate that opens by recalling an earlier opinion](docs/images/debate-session.jpg)
+
+*The debate workspace in text preview, populated with sample dialogue.*
+
+## How a conversation carries forward
+
+1. **Setup interview.** Tell your partner what you want to practice, what you care about, and when you want English feedback.
+2. **Debate.** Suppose you said that AI should handle routine work while people keep the judgment calls. A later session can ask, “If AI is better at screening résumés, who should make the final call?”
+3. **Review.** Read a summary, get English phrasing suggestions, and take an open question into the next discussion. You can inspect, edit, or forget the memories that shape future sessions.
+
+## How voice and memory connect
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Voice as GPT-Live
+    participant App as App backend
+    participant DB as SQLite
+    participant Review as Text model
+
+    Note over App,DB: Before the conversation
+    App->>DB: Load relevant context
+    DB-->>App: Memories and recent sessions
+    App->>Voice: Start session with context
+
+    Note over Browser,Voice: During the conversation
+    Browser->>Voice: Microphone audio (WebRTC)
+    Voice-->>Browser: Spoken replies and transcript events
+    Browser->>App: Transcript batches
+    App->>DB: Save transcript
+
+    Note over App,Review: After the conversation
+    App->>Review: Review the saved transcript
+    Review-->>App: Feedback and memory proposals
+    App->>App: Check proposals against learner statements
+    App->>DB: Save review and accepted updates
+```
+
+Each saved memory links to the learner’s words. Forgetting a memory keeps it out of future context and preserves the transcript in History. [Architecture and memory rules](docs/architecture.md)
+
+Live audio and relevant context go to OpenAI when voice is enabled. The single-user workspace stores transcripts locally.
 
 ## Run locally
 
@@ -41,12 +78,6 @@ docker compose ps
 Compose binds to localhost and stores the database in the `debate-data` volume. For a remote deployment, point an HTTPS reverse proxy at that port and set `APP_ORIGIN` to the external HTTPS origin. Serve over HTTPS outside localhost so browsers can access the microphone. Keep the application port behind the proxy and run one replica per workspace.
 
 Back up the SQLite database before replacing the host or removing the named volume. For a simple filesystem backup, stop the app and preserve the data directory, including SQLite sidecar files if present.
-
-## How memory works
-
-Each interview and conversation has its own transcript. Session reviews can propose memory changes. The backend checks their source utterances, preserves revisions, and distinguishes explicit facts from tentative interpretations. Later sessions receive a small set of relevant memories plus recent conversation context.
-
-The application stores transcripts, rather than audio recordings. Live audio and relevant context go to OpenAI when voice is enabled. Forgetting an individual memory removes it from future context while preserving the historical conversation in History. See [architecture and memory rules](docs/architecture.md).
 
 ## Verification
 
