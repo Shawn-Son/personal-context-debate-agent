@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5ef">
+  <meta name="description" content="A personal space to speak English, test your ideas, and pick up where you left off.">
+  <title>Context Debate — Your speaking studio</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar" aria-label="Workspace">
+    <a class="brand" href="#practice" aria-label="Context Debate home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span>Context<span class="brand-emphasis">Debate</span></span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#practice" data-nav="practice"><span data-icon="practice"></span>Practice</a>
+      <a href="#memory" data-nav="memory"><span data-icon="layers"></span>Memory</a>
+      <a href="#history" data-nav="history"><span data-icon="history"></span>History</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="#settings" data-nav="settings"><span data-icon="settings"></span>Settings</a>
+      <div class="workspace">
+        <span class="workspace-avatar" aria-hidden="true">P</span>
+        <span><strong>Personal studio</strong><small>English practice</small></span>
+      </div>
+    </div>
+  </aside>
+  <div class="main-shell">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Studio</span><span aria-hidden="true">/</span><strong id="page-label">Practice</strong></div>
+      <a href="#settings" class="connection" id="connection"><i></i><span>Checking connection</span></a>
+    </header>
+    <main id="main" tabindex="-1" aria-busy="true">
+      <div class="loading startup-loading">Opening your studio…</div>
+      <noscript><div class="loading">Context Debate needs JavaScript to open practice sessions, view your memory, and connect to your microphone. Enable JavaScript and reload this page.</div></noscript>
+    </main>
+  </div>
+  <div class="notice" id="notice" role="status" hidden></div>
+  <audio id="agent-audio" autoplay playsinline></audio>
+</body>
+</html>
